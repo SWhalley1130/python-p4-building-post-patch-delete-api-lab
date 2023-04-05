@@ -30,17 +30,46 @@ def bakeries():
     )
     return response
 
-@app.route('/bakeries/<int:id>')
+@app.route('/bakeries/<int:id>', methods=['GET', 'PATCH'])
 def bakery_by_id(id):
-
     bakery = Bakery.query.filter_by(id=id).first()
-    bakery_serialized = bakery.to_dict()
+    if request.method=='GET':
+        bakery_serialized = bakery.to_dict()
+        response = make_response(
+            bakery_serialized,
+            200
+        )
+        return response
+    elif request.method=='PATCH':
+        for attr in request.form:
+            setattr(bakery, attr, request.form.get(attr))
+        db.session.add(bakery)
+        db.session.commit()
+        b_dict=bakery.to_dict()
+        r=make_response(b_dict, 200)
+        return r
 
-    response = make_response(
-        bakery_serialized,
-        200
-    )
-    return response
+@app.route('/baked_goods', methods=['GET','POST'])
+def baked_goods():
+    if request.method=='GET':
+        baked_goods_array=[]
+        for good in BakedGood.query.all():
+            good_dict=good.to_dict()
+            baked_goods_array.append(good_dict)
+        r=make_response(baked_goods_array, 200)
+        return r
+    elif request.method=='POST':
+        new_bg=BakedGood(
+            name=request.form.get('name'),
+            price=request.form.get('price'),
+            bakery_id=request.form.get('bakery_id')
+        )
+        db.session.add(new_bg)
+        db.session.commit()
+
+        new_bg_dict=new_bg.to_dict()
+        r=make_response(new_bg_dict, 201)
+        return r
 
 @app.route('/baked_goods/by_price')
 def baked_goods_by_price():
@@ -65,6 +94,20 @@ def most_expensive_baked_good():
         200
     )
     return response
+
+@app.route('/baked_goods/<int:id>', methods=['GET', 'DELETE'])
+def baked_good_by_id(id):
+    bg=BakedGood.query.filter(BakedGood.id==id).first()
+    if request.method=='GET':
+        bg_dict=bg.to_dict()
+        r=make_response(bg_dict, 200)
+        return r
+    elif request.method=='DELETE':
+        db.session.delete(bg)
+        db.session.commit()
+        rb={'delete_successful':True, "message":"Review deleted"}
+        r=make_response(rb, 200)
+        return r
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
